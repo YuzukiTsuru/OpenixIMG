@@ -1,5 +1,5 @@
 /**
- * @file imagewty.hpp
+ * @file OpenixIMGWTY.hpp
  * @brief Definition of Allwinner IMAGEWTY format structures for OpenixIMG
  * @author YuzukiTsuru <gloomyghost@gloomyghost.com>
  */
