@@ -10,10 +10,10 @@
 #include "OpenixPartition.hpp"
 
 
-// 定义程序版本信息
+// Define program version information
 #define VERSION "1.0.0"
 
-// 命令行参数处理函数
+// Command line argument parsing function
 bool parseArguments(const int argc, char *argv[], std::string &operation,
                     std::string &input, std::string &output,
                     bool &verbose, bool &noEncrypt,
@@ -22,19 +22,19 @@ bool parseArguments(const int argc, char *argv[], std::string &operation,
         return false;
     }
 
-    // 标准操作处理
+    // Standard operation handling
     operation = argv[1];
 
-    // 转换为小写以进行大小写不敏感比较
+    // Convert to lowercase for case-insensitive comparison
     std::transform(operation.begin(), operation.end(), operation.begin(),
                    [](const unsigned char c) { return std::tolower(c); });
 
-    // 检查是否是有效的操作
+    // Check if it's a valid operation
     if (operation != "pack" && operation != "decrypt" && operation != "unpack" && operation != "partition") {
         return false;
     }
 
-    // 解析剩余参数
+    // Parse remaining arguments
     for (int i = 2; i < argc; ++i) {
         if (std::string arg = argv[i]; arg == "-i" && i + 1 < argc) {
             input = argv[++i];
@@ -57,7 +57,7 @@ bool parseArguments(const int argc, char *argv[], std::string &operation,
         }
     }
 
-    // 验证必要参数（partition操作的output是可选的）
+    // Validate required parameters (output is optional for partition operation)
     if (input.empty()) {
         return false;
     }
@@ -65,7 +65,7 @@ bool parseArguments(const int argc, char *argv[], std::string &operation,
     return true;
 }
 
-// 显示帮助信息
+// Display help information
 void showHelp(const char *programName) {
     std::cout << "OpenixIMG v" << VERSION << std::endl;
     std::cout << "Usage: " << programName << " <operation> -i <input> -o <output> [options]" << std::endl;
@@ -102,14 +102,14 @@ int main(const int argc, char *argv[]) {
     bool noEncrypt = false;
     auto outputFormat = OpenixIMG::OutputFormat::UNIMG;
 
-    // 解析命令行参数
+    // Parse command line arguments
     if (!parseArguments(argc, argv, operation, input, output, verbose, noEncrypt, outputFormat)) {
         showHelp(argv[0]);
         return 1;
     }
 
     try {
-        // 创建ImagePacker实例
+        // Create ImagePacker instance
         OpenixIMG::OpenixPacker packer;
         packer.setVerbose(verbose);
 
@@ -122,7 +122,7 @@ int main(const int argc, char *argv[]) {
 
         bool success = false;
 
-        // 执行指定的操作
+        // Execute the specified operation
         if (operation == "pack") {
             if (verbose) {
                 std::cout << "Packing directory into image file..." << std::endl;
@@ -158,7 +158,7 @@ int main(const int argc, char *argv[]) {
             packer.setOutputFormat(outputFormat);
             success = packer.unpackImage(output);
         } else if (operation == "partition") {
-            // 处理partition操作：只读取partition数据
+            // Handle partition operation: only read partition data
             std::cout << "Reading sys_partition.fex from image..." << std::endl;
 
             if (!packer.loadImage(input)) {
@@ -166,7 +166,7 @@ int main(const int argc, char *argv[]) {
                 return 1;
             }
 
-            // 直接获取sys_partition.fex文件数据
+            // Directly get sys_partition.fex file data
             auto fileData = packer.getFileDataByFilename("sys_partition.fex");
             if (!fileData) {
                 std::cerr << "Failed to find sys_partition.fex in the image!" << std::endl;
@@ -175,25 +175,25 @@ int main(const int argc, char *argv[]) {
 
             std::cout << "Found sys_partition.fex. Parsing partition table directly from memory..." << std::endl;
 
-            // 直接从内存数据解析分区表
+            // Parse partition table directly from memory data
             if (OpenixIMG::OpenixPartition partitionParser; partitionParser.parseFromData(
                 fileData->data(), fileData->size())) {
-                // 使用dumpToString方法获取格式化的分区表信息
+                // Use dumpToString method to get formatted partition table information
                 std::string partitionInfo = partitionParser.dumpToString();
 
-                // 输出结果到控制台或文件
+                // Output results to console or file
                 if (!output.empty()) {
-                    // 输出到文件
+                    // Output to file
                     if (std::ofstream outFile(output, std::ios::out | std::ios::binary); outFile.is_open()) {
                         outFile << partitionInfo;
                         outFile.close();
                         std::cout << "Partition table information has been written to " << output << std::endl;
                     } else {
                         std::cerr << "Failed to open output file: " << output << std::endl;
-                        std::cout << partitionInfo; // 仍然输出到控制台
+                        std::cout << partitionInfo; // still output to console
                     }
                 } else {
-                    // 输出到控制台
+                    // Output to console
                     std::cout << partitionInfo;
                 }
             } else {
@@ -203,7 +203,7 @@ int main(const int argc, char *argv[]) {
 
             return 0;
         }
-        // 默认返回操作成功/失败状态
+        // Default return operation success/failure status
         if (success) {
             if (verbose) {
                 std::cout << "Operation completed successfully!" << std::endl;
