@@ -149,6 +149,58 @@ bool OpenixPacker::isImageLoaded() const {
     return imageLoaded_;
 }
 
+void OpenixPacker::freeImage() {
+    // Clear image data to release memory
+    imageData_.clear();
+    imageData_.shrink_to_fit();
+    
+    // Reset state variables
+    imageLoaded_ = false;
+    imageSize_ = 0;
+    
+    // Note: We keep the imageFilePath_ so that reloadImage can still work
+    
+    if (verbose_) {
+        std::cout << "Image data freed successfully" << std::endl;
+    }
+}
+
+bool OpenixPacker::reloadImage() {
+    // Check if the new image file path is empty
+    if (imageFilePath_.empty()) {
+        std::cerr << "Error: No image file path provided" << std::endl;
+        return false;
+    }
+    
+    if (verbose_) {
+        std::cout << "Reloading image with new path: " << imageFilePath_ << std::endl;
+    }
+    
+    // Free current image data
+    freeImage();
+    
+    // Load the new image
+    return loadImage(imageFilePath_);
+}
+
+bool OpenixPacker::reloadImage(const std::string &newImageFilePath) {
+    // Check if the new image file path is empty
+    if (newImageFilePath.empty()) {
+        std::cerr << "Error: No image file path provided" << std::endl;
+        return false;
+    }
+    
+    if (verbose_) {
+        std::cout << "Reloading image with new path: " << newImageFilePath << std::endl;
+    }
+    
+    // Free current image data
+    freeImage();
+    
+    // Load the new image
+    return loadImage(newImageFilePath);
+}
+
 void OpenixPacker::initializeCrypto() {
     // Initialize RC6 context for header
     std::vector<uint8_t> headerKey(32, 0);

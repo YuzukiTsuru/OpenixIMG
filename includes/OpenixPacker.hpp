@@ -175,6 +175,33 @@ namespace OpenixIMG {
          */
         [[nodiscard]] bool isImageLoaded() const;
 
+        /**
+         * @brief Free the loaded image data and reset state
+         * 
+         * Releases memory occupied by the loaded image data and resets
+         * the state to indicate no image is loaded.
+         */
+        void freeImage();
+
+        /**
+          * @brief Reload the currently loaded image file with a new path
+          * 
+          * Loads a new image file, replacing the currently loaded image if any.
+          * 
+          * @return True if reloading was successful, false otherwise
+          */
+         bool reloadImage();
+
+        /**
+          * @brief Reload the currently loaded image file with a new path
+          * 
+          * Loads a new image file, replacing the currently loaded image if any.
+          * 
+          * @param newImageFilePath Path to the new image file to load
+          * @return True if reloading was successful, false otherwise
+          */
+         bool reloadImage(const std::string &newImageFilePath);
+
     private:
         /**
          * @brief Create directories recursively
