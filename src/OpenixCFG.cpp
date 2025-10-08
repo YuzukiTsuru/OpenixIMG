@@ -531,8 +531,8 @@ std::shared_ptr<Group> OpenixCFG::parseGroup(const std::string &line) {
     // Extract the group name
     auto groupName = line.substr(startPos, endPos - startPos);
 
-    auto firstNonSpace = 0;
-    auto lastNonSpace = groupName.length() - 1;
+    size_t firstNonSpace = 0;
+    size_t lastNonSpace = groupName.length() - 1;
 
     // Find the first non-whitespace character
     while (firstNonSpace <= lastNonSpace && std::isspace(groupName[firstNonSpace])) {

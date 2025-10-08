@@ -7,6 +7,12 @@
 #ifndef OPENIXPACKER_HPP
 #define OPENIXPACKER_HPP
 
+// Provide ssize_t definition for Windows platform
+#ifdef _WIN32
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #include <string>
 #include <vector>
 #include <optional>
