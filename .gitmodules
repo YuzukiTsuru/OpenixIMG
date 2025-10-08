@@ -1,0 +1,6 @@
+[submodule "lib/twofish"]
+	path = lib/twofish
+	url = https://github.com/YuzukiTsuru/twofish
+[submodule "lib/rc6"]
+	path = lib/rc6
+	url = https://github.com/YuzukiTsuru/rc6
