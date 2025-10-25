@@ -14,26 +14,31 @@
 
 #include "OpenixIMGWTY.hpp"
 #include "OpenixPacker.hpp"
+
+#include <algorithm>
+
 #include "OpenixCFG.hpp"
 
 using namespace OpenixIMG;
 namespace fs = std::filesystem;
 
-OpenixPacker::OpenixPacker() : encryptionEnabled_(true),
-                               outputFormat_(OutputFormat::UNIMG),
-                               verbose_(false),
-                               imageLoaded_(false),
-                               imageSize_(0),
-                               twofishKey_(32, 0) {
+OpenixPacker::OpenixPacker() :
+    encryptionEnabled_(true),
+    outputFormat_(OutputFormat::UNIMG),
+    verbose_(false),
+    imageLoaded_(false),
+    imageSize_(0),
+    twofishKey_(32, 0) {
     initializeCrypto();
 }
 
-OpenixPacker::OpenixPacker(const std::string &imageFilePath) : encryptionEnabled_(true),
-                                                               outputFormat_(OutputFormat::UNIMG),
-                                                               verbose_(false),
-                                                               imageLoaded_(false),
-                                                               imageSize_(0),
-                                                               twofishKey_(32, 0) {
+OpenixPacker::OpenixPacker(const std::string &imageFilePath) :
+    encryptionEnabled_(true),
+    outputFormat_(OutputFormat::UNIMG),
+    verbose_(false),
+    imageLoaded_(false),
+    imageSize_(0),
+    twofishKey_(32, 0) {
     initializeCrypto();
     loadImage(imageFilePath);
 }
@@ -153,13 +158,13 @@ void OpenixPacker::freeImage() {
     // Clear image data to release memory
     imageData_.clear();
     imageData_.shrink_to_fit();
-    
+
     // Reset state variables
     imageLoaded_ = false;
     imageSize_ = 0;
-    
+
     // Note: We keep the imageFilePath_ so that reloadImage can still work
-    
+
     if (verbose_) {
         std::cout << "Image data freed successfully" << std::endl;
     }
@@ -171,14 +176,14 @@ bool OpenixPacker::reloadImage() {
         std::cerr << "Error: No image file path provided" << std::endl;
         return false;
     }
-    
+
     if (verbose_) {
         std::cout << "Reloading image with new path: " << imageFilePath_ << std::endl;
     }
-    
+
     // Free current image data
     freeImage();
-    
+
     // Load the new image
     return loadImage(imageFilePath_);
 }
@@ -189,14 +194,14 @@ bool OpenixPacker::reloadImage(const std::string &newImageFilePath) {
         std::cerr << "Error: No image file path provided" << std::endl;
         return false;
     }
-    
+
     if (verbose_) {
         std::cout << "Reloading image with new path: " << newImageFilePath << std::endl;
     }
-    
+
     // Free current image data
     freeImage();
-    
+
     // Load the new image
     return loadImage(newImageFilePath);
 }
@@ -682,7 +687,7 @@ std::optional<FileHeader> OpenixPacker::getFileHeaderByFilename(const std::strin
     }
 }
 
-std::optional<std::vector<uint8_t> > OpenixPacker::getFileDataByFilename(const std::string &filename) const {
+std::optional<std::vector<uint8_t>> OpenixPacker::getFileDataByFilename(const std::string &filename) const {
     try {
         // Check if an image is loaded
         if (!imageLoaded_) {
@@ -786,6 +791,236 @@ bool OpenixPacker::extractFileByFilename(const std::string &filename, const std:
     } catch (const std::exception &e) {
         std::cerr << "Error extracting file: " << e.what() << std::endl;
         return false;
+    }
+}
+
+bool OpenixPacker::checkFileBySubtype(const std::string &subtype) const {
+    try {
+        // Check if an image is loaded
+        if (!imageLoaded_) {
+            std::cerr << "Error: no image file loaded!" << std::endl;
+            return false;
+        }
+
+        // Search for the file by subtype
+        bool found = false;
+        uint32_t numFiles = 0;
+
+        if (imageHeader_.header_version == 0x0300) {
+            numFiles = imageHeader_.v3.num_files;
+        } else {
+            numFiles = imageHeader_.v1.num_files;
+        }
+
+        for (uint32_t i = 0; i < numFiles; ++i) {
+            auto *fileHeader = reinterpret_cast<const FileHeader *>(imageData_.data() + 1024 + i * 1024);
+            std::string currentSubtype(fileHeader->subtype.data(), IMAGEWTY_FHDR_SUBTYPE_LEN);
+            // Remove trailing null characters and whitespace
+            currentSubtype.erase(std::find_if(currentSubtype.rbegin(), currentSubtype.rend(),
+                                              [](const unsigned char ch) {
+                                                  return !std::isspace(ch) && ch != '\0';
+                                              }).base(), currentSubtype.end());
+
+            if (currentSubtype == subtype) {
+                found = true;
+                if (verbose_) {
+                    std::cout << "File with subtype found: " << subtype << std::endl;
+                }
+                break;
+            }
+        }
+
+        if (!found && verbose_) {
+            std::cout << "File with subtype not found: " << subtype << std::endl;
+        }
+
+        return found;
+    } catch (const std::exception &e) {
+        std::cerr << "Error checking file by subtype: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+std::vector<FileHeader> OpenixPacker::getFileHeaderBySubtype(const std::string &subtype) const {
+    try {
+        // Check if an image is loaded
+        if (!imageLoaded_) {
+            std::cerr << "Error: no image file loaded!" << std::endl;
+            return {};
+        }
+
+        // Search for files by subtype
+        std::vector<FileHeader> results;
+        uint32_t numFiles = 0;
+
+        if (imageHeader_.header_version == 0x0300) {
+            numFiles = imageHeader_.v3.num_files;
+        } else {
+            numFiles = imageHeader_.v1.num_files;
+        }
+
+        for (uint32_t i = 0; i < numFiles; ++i) {
+            auto *fileHeader = reinterpret_cast<const FileHeader *>(imageData_.data() + 1024 + i * 1024);
+            std::string currentSubtype(fileHeader->subtype.data(), IMAGEWTY_FHDR_SUBTYPE_LEN);
+            // Remove trailing null characters and whitespace
+            currentSubtype.erase(std::find_if(currentSubtype.rbegin(), currentSubtype.rend(),
+                                              [](const unsigned char ch) { return !std::isspace(ch) && ch != '\0'; }).base(),
+                                 currentSubtype.end());
+
+            if (currentSubtype == subtype) {
+                if (verbose_) {
+                    const char *filename = nullptr;
+                    if (imageHeader_.header_version == 0x0300) {
+                        filename = fileHeader->v3.filename.data();
+                    } else {
+                        filename = fileHeader->v1.filename.data();
+                    }
+                    std::cout << "File header found for subtype: " << subtype << " (file: " << (
+                        filename ? filename : "unknown") << ")" << std::endl;
+                }
+                // Add a copy of the file header to results
+                FileHeader result;
+                std::memcpy(&result, fileHeader, sizeof(FileHeader));
+                results.push_back(result);
+            }
+        }
+
+        if (verbose_) {
+            std::cout << "Found " << results.size() << " files with subtype: " << subtype << std::endl;
+        }
+
+        return results;
+    } catch (const std::exception &e) {
+        std::cerr << "Error retrieving file headers by subtype: " << e.what() << std::endl;
+        return {};
+    }
+}
+
+bool OpenixPacker::extractFileBySubtype(const std::string &subtype, const std::string &outputDir) const {
+    try {
+        // Check if an image is loaded
+        if (!imageLoaded_) {
+            std::cerr << "Error: no image file loaded!" << std::endl;
+            return false;
+        }
+
+        // Get file data using getFileDataBySubtype
+        const auto fileDataPairs = getFileDataBySubtype(subtype);
+        if (fileDataPairs.empty()) {
+            std::cerr << "Error: no files found with subtype " << subtype << std::endl;
+            return false;
+        }
+
+        bool allSuccess = true;
+
+        // Extract each file
+        for (const auto &[filename, fileData]: fileDataPairs) {
+            // Create directory structure if needed
+            const std::string filePath = outputDir + "/" + filename;
+            if (const size_t lastSlashPos = filePath.find_last_of("/\\"); lastSlashPos != std::string::npos) {
+                if (const std::string dirPath = filePath.substr(0, lastSlashPos); !createDirectoryRecursive(dirPath)) {
+                    std::cerr << "Error: unable to create directory " << dirPath << "!" << std::endl;
+                    allSuccess = false;
+                    continue;
+                }
+            }
+
+            // Write file data to output directory
+            std::ofstream outFile(filePath, std::ios::binary);
+            if (!outFile.is_open()) {
+                std::cerr << "Error: unable to create file " << filePath << "!" << std::endl;
+                allSuccess = false;
+                continue;
+            }
+
+            outFile.write(reinterpret_cast<const char *>(fileData.data()), fileData.size());
+            outFile.close();
+
+            if (verbose_) {
+                std::cout << "Successfully extracted " << filename << " to " << outputDir << std::endl;
+            }
+        }
+
+        if (allSuccess && verbose_) {
+            std::cout << "Successfully extracted " << fileDataPairs.size() << " files with subtype " << subtype <<
+                    " to " << outputDir << std::endl;
+        }
+
+        return allSuccess;
+    } catch (const std::exception &e) {
+        std::cerr << "Error extracting files by subtype: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+std::vector<std::pair<std::string, std::vector<uint8_t>>> OpenixPacker::getFileDataBySubtype(
+        const std::string &subtype) const {
+    try {
+        // Check if an image is loaded
+        if (!imageLoaded_) {
+            std::cerr << "Error: no image file loaded!" << std::endl;
+            return {};
+        }
+
+        // Search for files by subtype
+        std::vector<std::pair<std::string, std::vector<uint8_t>>> results;
+        uint32_t numFiles = 0;
+
+        if (imageHeader_.header_version == 0x0300) {
+            numFiles = imageHeader_.v3.num_files;
+        } else {
+            numFiles = imageHeader_.v1.num_files;
+        }
+
+        for (uint32_t i = 0; i < numFiles; ++i) {
+            auto *fileHeader = reinterpret_cast<const FileHeader *>(imageData_.data() + 1024 + i * 1024);
+            std::string currentSubtype(fileHeader->subtype.data(), IMAGEWTY_FHDR_SUBTYPE_LEN);
+            // Remove trailing null characters and whitespace
+            currentSubtype.erase(std::find_if(
+                currentSubtype.rbegin(), currentSubtype.rend(),
+                                              [](const unsigned char ch) {
+                                                  return !std::isspace(ch) && ch != '\0';
+                                              }).base(),
+                                 currentSubtype.end());
+
+            if (currentSubtype == subtype) {
+                const char *filename = nullptr;
+                uint32_t offset = 0;
+                uint32_t originalLength = 0;
+
+                if (imageHeader_.header_version == 0x0300) {
+                    filename = fileHeader->v3.filename.data();
+                    offset = fileHeader->v3.offset;
+                    originalLength = fileHeader->v3.original_length;
+                } else {
+                    filename = fileHeader->v1.filename.data();
+                    offset = fileHeader->v1.offset;
+                    originalLength = fileHeader->v1.original_length;
+                }
+
+                if (verbose_) {
+                    std::cout << "Extracting data for file with subtype " << subtype << ": " <<
+                            (filename ? filename : "unknown") << " (" << originalLength << " bytes)" << std::endl;
+                }
+
+                // Extract file data (already decrypted during loadImage)
+                std::vector<uint8_t> fileData;
+                fileData.reserve(originalLength);
+                fileData.assign(imageData_.data() + offset, imageData_.data() + offset + originalLength);
+
+                // Add filename and file data to results
+                results.emplace_back(filename ? filename : "unknown", std::move(fileData));
+            }
+        }
+
+        if (verbose_) {
+            std::cout << "Found " << results.size() << " files with subtype: " << subtype << std::endl;
+        }
+
+        return results;
+    } catch (const std::exception &e) {
+        std::cerr << "Error retrieving file data by subtype: " << e.what() << std::endl;
+        return {};
     }
 }
 

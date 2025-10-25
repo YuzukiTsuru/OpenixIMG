@@ -136,12 +136,28 @@ namespace OpenixIMG {
         [[nodiscard]] bool checkFileByFilename(const std::string &filename) const;
 
         /**
+         * @brief Check if a file exists in the loaded image by subtype
+         * 
+         * @param subtype Subtype of the file to check
+         * @return True if a file with the specified subtype exists, false otherwise
+         */
+        [[nodiscard]] bool checkFileBySubtype(const std::string &subtype) const;
+
+        /**
          * @brief Get file header information from the loaded image by filename
          * 
          * @param filename Name of the file to check
          * @return File header information if found, std::nullopt otherwise
          */
         [[nodiscard]] std::optional<FileHeader> getFileHeaderByFilename(const std::string &filename) const;
+
+        /**
+         * @brief Get file header information from the loaded image by subtype
+         * 
+         * @param subtype Subtype of the file to check
+         * @return Vector of file header information for all files with the specified subtype
+         */
+        [[nodiscard]] std::vector<FileHeader> getFileHeaderBySubtype(const std::string &subtype) const;
 
         /**
          * @brief Extract a file from the loaded image by filename
@@ -154,12 +170,30 @@ namespace OpenixIMG {
                                    const std::string &outputDir) const;
 
         /**
+         * @brief Extract all files from the loaded image by subtype
+         * 
+         * @param subtype Subtype of the files to extract
+         * @param outputDir Path to save the extracted files
+         * @return True if extraction was successful, false otherwise
+         */
+        bool extractFileBySubtype(const std::string &subtype,
+                                  const std::string &outputDir) const;
+
+        /**
          * @brief Get file data from the loaded image by filename
          * 
          * @param filename Name of the file to extract
          * @return Vector containing the file data if found, std::nullopt otherwise
          */
         [[nodiscard]] std::optional<std::vector<uint8_t>> getFileDataByFilename(const std::string &filename) const;
+
+        /**
+         * @brief Get file data from the loaded image by subtype
+         * 
+         * @param subtype Subtype of the files to extract
+         * @return Vector of pairs containing filename and file data for all files with the specified subtype
+         */
+        [[nodiscard]] std::vector<std::pair<std::string, std::vector<uint8_t>>> getFileDataBySubtype(const std::string &subtype) const;
 
         /**
          * @brief Get the loaded image file path
