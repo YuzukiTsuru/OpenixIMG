@@ -55,18 +55,23 @@ bool OpenixIMGFile::loadImage(const std::string &imageFilePath) {
             throw std::runtime_error("Error: Invalid file size 0");
         }
 
-        // Read entire image into memory
-        imageData_.resize(imageSize_);
+        // Store file path
+        imageFilePath_ = imageFilePath;
+
+        // Clear any existing data
+        imageData_.clear();
+        imageData_.reserve(1024); // Reserve space for header
+
+        // Read and parse only the header
         std::ifstream inFile(imageFilePath, std::ios::binary);
         if (!inFile.is_open()) {
             throw std::runtime_error("Error: unable to open " + imageFilePath + "!");
         }
 
-        inFile.read(reinterpret_cast<char *>(imageData_.data()), imageSize_);
+        // Read header (1024 bytes)
+        imageData_.resize(1024);
+        inFile.read(reinterpret_cast<char *>(imageData_.data()), 1024);
         inFile.close();
-
-        // Store file path
-        imageFilePath_ = imageFilePath;
 
         // Parse image header
         imageHeader_ = *reinterpret_cast<ImageHeader *>(imageData_.data());
@@ -81,7 +86,7 @@ bool OpenixIMGFile::loadImage(const std::string &imageFilePath) {
             imageHeader_ = *reinterpret_cast<ImageHeader *>(imageData_.data());
         }
 
-        // Decrypt file headers if needed
+        // Get number of files
         uint32_t numFiles = 0;
         if (imageHeader_.header_version == 0x0300) {
             numFiles = imageHeader_.v3.num_files;
@@ -89,27 +94,18 @@ bool OpenixIMGFile::loadImage(const std::string &imageFilePath) {
             numFiles = imageHeader_.v1.num_files;
         }
 
+        // Resize imageData_ to hold header and file headers
+        imageData_.resize(1024 + numFiles * 1024);
+        
+        // Read file headers
+        inFile.open(imageFilePath, std::ios::binary);
+        inFile.seekg(1024);
+        inFile.read(reinterpret_cast<char *>(imageData_.data() + 1024), numFiles * 1024);
+        inFile.close();
+
+        // Decrypt file headers if needed
         if (isEncrypted_ && encryptionEnabled_) {
             rc6DecryptInPlace(imageData_.data() + 1024, numFiles * 1024, fileHeadersContext_);
-        }
-
-        // Decrypt file contents if needed
-        uint8_t *current = imageData_.data() + 1024 + numFiles * 1024;
-        for (uint32_t i = 0; i < numFiles; ++i) {
-            auto *fileHeader = reinterpret_cast<const FileHeader *>(imageData_.data() + 1024 + i * 1024);
-
-            uint32_t storedLength = 0;
-
-            if (imageHeader_.header_version == 0x0300) {
-                storedLength = fileHeader->v3.stored_length;
-            } else {
-                storedLength = fileHeader->v1.stored_length;
-            }
-
-            // Decrypt with RC6 if needed
-            if (isEncrypted_ && encryptionEnabled_) {
-                current = static_cast<uint8_t *>(rc6DecryptInPlace(current, storedLength, fileContentContext_));
-            }
         }
 
         // Get image metadata
@@ -339,8 +335,7 @@ bool OpenixIMGFile::checkFileBySubtype(const std::string &subtype) const {
     try {
         // Check if an image is loaded
         if (!imageLoaded_) {
-            std::cerr << "Error: no image file loaded!" << std::endl;
-            return false;
+            throw std::runtime_error("No image file loaded!");
         }
 
         // Search for the file by subtype
@@ -415,12 +410,39 @@ std::vector<FileHeader> OpenixIMGFile::getFileHeaderBySubtype(const std::string 
     }
 }
 
+// Helper method to read file data from disk with optional decryption
+std::vector<uint8_t> OpenixIMGFile::readFileDataFromDisk(uint32_t offset, uint32_t storedLength, uint32_t originalLength) const {
+    std::vector<uint8_t> fileData(storedLength);
+    
+    // Open the image file
+    std::ifstream inFile(imageFilePath_, std::ios::binary);
+    if (!inFile.is_open()) {
+        throw std::runtime_error("Error: unable to open " + imageFilePath_ + "!");
+    }
+    
+    // Read the stored data
+    inFile.seekg(offset);
+    inFile.read(reinterpret_cast<char *>(fileData.data()), storedLength);
+    inFile.close();
+    
+    // Decrypt if needed
+    if (isEncrypted_ && encryptionEnabled_) {
+        rc6DecryptInPlace(fileData.data(), storedLength, fileContentContext_);
+    }
+    
+    // Resize to original length if needed
+    if (originalLength < storedLength) {
+        fileData.resize(originalLength);
+    }
+    
+    return fileData;
+}
+
 std::optional<std::vector<uint8_t> > OpenixIMGFile::getFileDataByFilename(const std::string &filename) const {
     try {
         // Check if an image is loaded
         if (!imageLoaded_) {
-            std::cerr << "Error: no image file loaded!" << std::endl;
-            return std::nullopt;
+            throw std::runtime_error("No image file loaded!");
         }
 
         // Search for the file by filename
@@ -429,15 +451,14 @@ std::optional<std::vector<uint8_t> > OpenixIMGFile::getFileDataByFilename(const 
                 OpenixUtils::log(
                     "Extracting data for: " + filename + " (size: " + std::to_string(fileInfo.originalLength) +
                     " bytes)");
-                // Extract file data
-                std::vector<uint8_t> fileData(fileInfo.originalLength);
-                std::memcpy(fileData.data(), imageData_.data() + fileInfo.offset, fileInfo.originalLength);
+                
+                // Read file data from disk
+                std::vector<uint8_t> fileData = readFileDataFromDisk(fileInfo.offset, fileInfo.storedLength, fileInfo.originalLength);
                 return fileData;
             }
         }
 
         OpenixUtils::log("File data not found for: " + filename);
-
         return std::nullopt;
     } catch (const std::exception &e) {
         throw std::runtime_error(e.what());
@@ -449,8 +470,7 @@ std::vector<std::pair<std::string, std::vector<uint8_t> > > OpenixIMGFile::getFi
     try {
         // Check if an image is loaded
         if (!imageLoaded_) {
-            std::cerr << "Error: no image file loaded!" << std::endl;
-            return {};
+            throw std::runtime_error("No image file loaded!");
         }
 
         // Search for files by subtype
@@ -460,15 +480,14 @@ std::vector<std::pair<std::string, std::vector<uint8_t> > > OpenixIMGFile::getFi
                 OpenixUtils::log(
                     "Extracting data for: " + fileInfo.filename + " (size: " + std::to_string(fileInfo.originalLength) +
                     " bytes)");
-                // Extract file data
-                std::vector<uint8_t> fileData(fileInfo.originalLength);
-                std::memcpy(fileData.data(), imageData_.data() + fileInfo.offset, fileInfo.originalLength);
+                
+                // Read file data from disk
+                std::vector<uint8_t> fileData = readFileDataFromDisk(fileInfo.offset, fileInfo.storedLength, fileInfo.originalLength);
                 results.emplace_back(fileInfo.filename, std::move(fileData));
             }
         }
 
         OpenixUtils::log("Found " + std::to_string(results.size()) + " files with subtype: " + subtype);
-
         return results;
     } catch (const std::exception &e) {
         throw std::runtime_error(e.what());

@@ -241,9 +241,11 @@ namespace OpenixIMG {
         /**
          * @brief RC6 encrypt data in place
          * 
+         * Encrypts data using RC6 algorithm in place (modifies the input buffer).
+         * 
          * @param data Pointer to data to encrypt
-         * @param length Length of data
-         * @param context RC6 context to use
+         * @param length Length of data to encrypt
+         * @param context RC6 context to use for encryption
          * @return Pointer to encrypted data (same as input pointer)
          */
         static void *rc6EncryptInPlace(void *data, size_t length, const RC6 &context);
@@ -251,9 +253,11 @@ namespace OpenixIMG {
         /**
          * @brief RC6 decrypt data in place
          * 
+         * Decrypts data using RC6 algorithm in place (modifies the input buffer).
+         * 
          * @param data Pointer to data to decrypt
-         * @param length Length of data
-         * @param context RC6 context to use
+         * @param length Length of data to decrypt
+         * @param context RC6 context to use for decryption
          * @return Pointer to decrypted data (same as input pointer)
          */
         static void *rc6DecryptInPlace(void *data, size_t length, const RC6 &context);
@@ -261,23 +265,43 @@ namespace OpenixIMG {
         /**
          * @brief Twofish decrypt data in place
          * 
+         * Decrypts data using Twofish algorithm in place (modifies the input buffer).
+         * 
          * @param data Pointer to data to decrypt
-         * @param length Length of data
-         * @param context Twofish context to use
+         * @param length Length of data to decrypt
+         * @param context Twofish context to use for decryption
          * @return Pointer to decrypted data (same as input pointer)
          */
         static void *twofishDecryptInPlace(void *data, size_t length, const Twofish &context);
 
 
-        // Private helper function to load file list
+        /**
+         * @brief Load and parse the file list from the image
+         * 
+         * This method parses the file list section of the image and populates
+         * the internal fileList_ vector with information about each file.
+         */
         void loadFileList();
+        
+        /**
+          * @brief Private helper function to read file data from disk with optional decryption
+          * 
+          * This method reads file data directly from disk at the specified offset and length,
+          * with optional decryption if encryption is enabled.
+          * 
+          * @param offset Offset in the image file where the data starts
+          * @param storedLength Length of the data as stored (compressed/encrypted)
+          * @param originalLength Original length of the data before compression/encryption
+          * @return Vector containing the read and possibly decrypted file data
+          */
+        [[nodiscard]] std::vector<uint8_t> readFileDataFromDisk(uint32_t offset, uint32_t storedLength, uint32_t originalLength) const;
 
         // Member variables
         bool encryptionEnabled_; //!< Flag indicating if encryption is enabled
         bool imageLoaded_; //!< Flag indicating if an image file is loaded
         std::string imageFilePath_; //!< Path to the loaded image file
         ssize_t imageSize_; //!< Size of the loaded image file
-        std::vector<uint8_t> imageData_; //!< Content of the loaded image file
+        std::vector<uint8_t> imageData_; //!< Content of the loaded image file (partial data for header and file list)
         ImageHeader imageHeader_; //!< Parsed image header
         bool isEncrypted_{}; //!< Flag indicating if the image is encrypted
         std::vector<FileInfo> fileList_; //!< List of files in the image
@@ -289,9 +313,9 @@ namespace OpenixIMG {
         uint32_t firmwareId_{}; //!< Firmware ID
 
         // Crypto contexts
-        RC6 headerContext_; //!< RC6 context for header encryption
-        RC6 fileHeadersContext_; //!< RC6 context for file headers encryption
-        RC6 fileContentContext_; //!< RC6 context for file content encryption
+        RC6 headerContext_; //!< RC6 context for header encryption/decryption
+        RC6 fileHeadersContext_; //!< RC6 context for file headers encryption/decryption
+        RC6 fileContentContext_; //!< RC6 context for file content encryption/decryption
         Twofish twofishContext_; //!< Twofish context for decryption
         std::vector<uint8_t> twofishKey_; //!< Twofish encryption key
     };
