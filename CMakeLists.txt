@@ -11,9 +11,9 @@ if(MSVC)
 endif()
 
 include_directories(
-        lib/rc6/includes
-        lib/twofish/includes
-        includes
+        ${CMAKE_CURRENT_SOURCE_DIR}/lib/rc6/includes
+        ${CMAKE_CURRENT_SOURCE_DIR}/lib/twofish/includes
+        ${CMAKE_CURRENT_SOURCE_DIR}/includes
 )
 
 add_subdirectory(lib)

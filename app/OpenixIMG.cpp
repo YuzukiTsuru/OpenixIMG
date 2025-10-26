@@ -8,6 +8,7 @@
 
 #include "OpenixPacker.hpp"
 #include "OpenixPartition.hpp"
+#include "OpenixIMGFile.hpp"
 
 
 // Define program version information
@@ -72,8 +73,6 @@ void showHelp(const char *programName) {
     std::cout << "       " << programName << " partition -i <image_file> [-o <output_file>]" << std::endl;
     std::cout << std::endl;
     std::cout << "Operations:" << std::endl;
-    std::cout << "  pack       Pack a directory into an image file" << std::endl;
-    std::cout << "  decrypt    Decrypt an encrypted image file" << std::endl;
     std::cout << "  unpack     Extract files from an image file" << std::endl;
     std::cout << "  partition  Output partition table from an image file" << std::endl;
     std::cout << std::endl;
@@ -100,7 +99,7 @@ int main(const int argc, char *argv[]) {
     std::string output;
     bool verbose = false;
     bool noEncrypt = false;
-    auto outputFormat = OpenixIMG::OutputFormat::UNIMG;
+    auto outputFormat = OpenixIMG::OutputFormat::IMGREPACKER;
 
     // Parse command line arguments
     if (!parseArguments(argc, argv, operation, input, output, verbose, noEncrypt, outputFormat)) {
@@ -109,9 +108,12 @@ int main(const int argc, char *argv[]) {
     }
 
     try {
-        // Create ImagePacker instance
-        OpenixIMG::OpenixPacker packer;
-        packer.setVerbose(verbose);
+        // Create OpenixIMGFile instance
+        OpenixIMG::OpenixIMGFile imgFile;
+        imgFile.setVerbose(verbose);
+        
+        // Create OpenixPacker instance with OpenixIMGFile
+        OpenixIMG::OpenixPacker packer(imgFile);
 
         if (verbose) {
             std::cout << "OpenixIMG v" << VERSION << " started" << std::endl;
@@ -123,51 +125,29 @@ int main(const int argc, char *argv[]) {
         bool success = false;
 
         // Execute the specified operation
-        if (operation == "pack") {
-            if (verbose) {
-                std::cout << "Packing directory into image file..." << std::endl;
-            }
-
-            packer.setEncryptionEnabled(!noEncrypt);
-            if (verbose && noEncrypt) {
-                std::cout << "Encryption: disabled" << std::endl;
-            }
-
-            success = packer.packImage(input, output);
-        } else if (operation == "decrypt") {
-            if (verbose) {
-                std::cout << "Decrypting image file..." << std::endl;
-            }
-
-            if (!packer.loadImage(input)) {
-                std::cerr << "Failed to load image file!" << std::endl;
-                return 1;
-            }
-            success = packer.decryptImage(output);
-        } else if (operation == "unpack") {
+        if (operation == "unpack") {
             if (verbose) {
                 std::cout << "Unpacking image file..." << std::endl;
                 std::cout << "Output format: " <<
                         (outputFormat == OpenixIMG::OutputFormat::UNIMG ? "unimg" : "imgrepacker") << std::endl;
             }
 
-            if (!packer.loadImage(input)) {
+            if (!imgFile.loadImage(input)) {
                 std::cerr << "Failed to load image file!" << std::endl;
                 return 1;
             }
-            packer.setOutputFormat(outputFormat);
-            success = packer.unpackImage(output);
+            success = packer.unpackImage(output, outputFormat);
         } else if (operation == "partition") {
             // Handle partition operation: only read partition data
             std::cout << "Reading sys_partition.fex from image..." << std::endl;
 
-            if (!packer.loadImage(input)) {
+            if (!imgFile.loadImage(input)) {
                 std::cerr << "Failed to load image file!" << std::endl;
                 return 1;
             }
 
             // Directly get sys_partition.fex file data
-            auto fileData = packer.getFileDataByFilename("sys_partition.fex");
+            auto fileData = imgFile.getFileDataByFilename("sys_partition.fex");
             if (!fileData) {
                 std::cerr << "Failed to find sys_partition.fex in the image!" << std::endl;
                 return 1;
