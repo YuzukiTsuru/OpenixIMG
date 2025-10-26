@@ -14,6 +14,7 @@
 
 #include "OpenixIMGWTY.hpp"
 #include "OpenixIMGFile.hpp"
+#include "OpenixUtils.hpp"
 
 #include <algorithm>
 
@@ -21,7 +22,6 @@ using namespace OpenixIMG;
 namespace fs = std::filesystem;
 
 OpenixIMGFile::OpenixIMGFile() : encryptionEnabled_(true),
-                                 verbose_(false),
                                  imageLoaded_(false),
                                  imageSize_(0),
                                  twofishKey_(32, 0) {
@@ -29,7 +29,6 @@ OpenixIMGFile::OpenixIMGFile() : encryptionEnabled_(true),
 }
 
 OpenixIMGFile::OpenixIMGFile(const std::string &imageFilePath) : encryptionEnabled_(true),
-                                                                 verbose_(false),
                                                                  imageLoaded_(false),
                                                                  imageSize_(0),
                                                                  twofishKey_(32, 0) {
@@ -43,31 +42,24 @@ void OpenixIMGFile::setEncryptionEnabled(const bool enabled) {
     encryptionEnabled_ = enabled;
 }
 
-void OpenixIMGFile::setVerbose(const bool verbose) {
-    verbose_ = verbose;
-}
-
 bool OpenixIMGFile::loadImage(const std::string &imageFilePath) {
     try {
         // Check if file exists
         if (!fs::exists(imageFilePath)) {
-            std::cerr << "Error: unable to open " << imageFilePath << "!" << std::endl;
-            return false;
+            throw std::runtime_error("Error: unable to open " + imageFilePath + "!");
         }
 
         // Get file size
         imageSize_ = static_cast<ssize_t>(fs::file_size(imageFilePath));
         if (imageSize_ == 0) {
-            std::cerr << "Error: Invalid file size 0" << std::endl;
-            return false;
+            throw std::runtime_error("Error: Invalid file size 0");
         }
 
         // Read entire image into memory
         imageData_.resize(imageSize_);
         std::ifstream inFile(imageFilePath, std::ios::binary);
         if (!inFile.is_open()) {
-            std::cerr << "Error: unable to open " << imageFilePath << "!" << std::endl;
-            return false;
+            throw std::runtime_error("Error: unable to open " + imageFilePath + "!");
         }
 
         inFile.read(reinterpret_cast<char *>(imageData_.data()), imageSize_);
@@ -139,17 +131,13 @@ bool OpenixIMGFile::loadImage(const std::string &imageFilePath) {
         // Mark image as loaded
         imageLoaded_ = true;
 
-        if (verbose_) {
-            std::cout << "Successfully loaded image: " << imageFilePath << " (size: " << imageSize_ << " bytes)" <<
-                    std::endl;
-            std::cout << "Found " << fileList_.size() << " files in image" << std::endl;
-        }
+        OpenixUtils::log(
+            "Successfully loaded image: " + imageFilePath + " (size: " + std::to_string(imageSize_) + " bytes)");
+        OpenixUtils::log("Found " + std::to_string(fileList_.size()) + " files in image");
 
         return true;
     } catch (const std::exception &e) {
-        std::cerr << "Error loading image: " << e.what() << std::endl;
-        imageLoaded_ = false;
-        return false;
+        throw std::runtime_error(e.what());
     }
 }
 
@@ -182,45 +170,37 @@ void OpenixIMGFile::freeImage() {
 
     // Note: We keep the imageFilePath_ so that reloadImage can still work
 
-    if (verbose_) {
-        std::cout << "Image data freed successfully" << std::endl;
-    }
+    OpenixUtils::log("Image data freed successfully");
 }
 
-bool OpenixIMGFile::reloadImage() {
+void OpenixIMGFile::reloadImage() {
     // Check if the new image file path is empty
     if (imageFilePath_.empty()) {
-        std::cerr << "Error: No image file path provided" << std::endl;
-        return false;
+        throw std::runtime_error("Error: No image file path provided");
     }
 
-    if (verbose_) {
-        std::cout << "Reloading image with new path: " << imageFilePath_ << std::endl;
-    }
+    OpenixUtils::log("Reloading image with new path: " + imageFilePath_);
 
     // Free current image data
     freeImage();
 
     // Load the new image
-    return loadImage(imageFilePath_);
+    loadImage(imageFilePath_);
 }
 
-bool OpenixIMGFile::reloadImage(const std::string &newImageFilePath) {
+void OpenixIMGFile::reloadImage(const std::string &newImageFilePath) {
     // Check if the new image file path is empty
     if (newImageFilePath.empty()) {
-        std::cerr << "Error: No image file path provided" << std::endl;
-        return false;
+        throw std::runtime_error("Error: No image file path provided");
     }
 
-    if (verbose_) {
-        std::cout << "Reloading image with new path: " << newImageFilePath << std::endl;
-    }
+    OpenixUtils::log("Reloading image with new path: " + newImageFilePath);
 
     // Free current image data
     freeImage();
 
     // Load the new image
-    return loadImage(newImageFilePath);
+    loadImage(newImageFilePath);
 }
 
 uint32_t OpenixIMGFile::getPID() const {
@@ -332,8 +312,7 @@ bool OpenixIMGFile::checkFileByFilename(const std::string &filename) const {
     try {
         // Check if an image is loaded
         if (!imageLoaded_) {
-            std::cerr << "Error: no image file loaded!" << std::endl;
-            return false;
+            throw std::runtime_error("No image file loaded!");
         }
 
         // Search for the file by filename
@@ -341,21 +320,18 @@ bool OpenixIMGFile::checkFileByFilename(const std::string &filename) const {
         for (const auto &fileInfo: fileList_) {
             if (fileInfo.filename == filename) {
                 found = true;
-                if (verbose_) {
-                    std::cout << "File found: " << filename << std::endl;
-                }
+                OpenixUtils::log("File found: " + filename);
                 break;
             }
         }
 
-        if (!found && verbose_) {
-            std::cout << "File not found: " << filename << std::endl;
+        if (!found) {
+            OpenixUtils::log("File not found: " + filename);
         }
 
         return found;
     } catch (const std::exception &e) {
-        std::cerr << "Error checking file by filename: " << e.what() << std::endl;
-        return false;
+        throw std::runtime_error(e.what());
     }
 }
 
@@ -372,21 +348,18 @@ bool OpenixIMGFile::checkFileBySubtype(const std::string &subtype) const {
         for (const auto &fileInfo: fileList_) {
             if (fileInfo.subtype == subtype) {
                 found = true;
-                if (verbose_) {
-                    std::cout << "File with subtype found: " << subtype << std::endl;
-                }
+                OpenixUtils::log("File with subtype found: " + subtype);
                 break;
             }
         }
 
-        if (!found && verbose_) {
-            std::cout << "File with subtype not found: " << subtype << std::endl;
+        if (!found) {
+            OpenixUtils::log("File with subtype not found: " + subtype);
         }
 
         return found;
     } catch (const std::exception &e) {
-        std::cerr << "Error checking file by subtype: " << e.what() << std::endl;
-        return false;
+        throw std::runtime_error(e.what());
     }
 }
 
@@ -394,30 +367,24 @@ std::optional<FileHeader> OpenixIMGFile::getFileHeaderByFilename(const std::stri
     try {
         // Check if an image is loaded
         if (!imageLoaded_) {
-            std::cerr << "Error: no image file loaded!" << std::endl;
-            return std::nullopt;
+            throw std::runtime_error("No image file loaded!");
         }
 
         // Search for the file by filename
         for (size_t i = 0; i < fileList_.size(); ++i) {
             if (fileList_[i].filename == filename) {
-                if (verbose_) {
-                    std::cout << "File header found for: " << filename << std::endl;
-                }
+                OpenixUtils::log("File header found for: " + filename);
                 // Return a copy of the file header
                 auto *fileHeader = reinterpret_cast<const FileHeader *>(imageData_.data() + 1024 + i * 1024);
                 return *fileHeader;
             }
         }
 
-        if (verbose_) {
-            std::cout << "File header not found for: " << filename << std::endl;
-        }
+        OpenixUtils::log("File header not found for: " + filename);
 
         return std::nullopt;
     } catch (const std::exception &e) {
-        std::cerr << "Error retrieving file header by filename: " << e.what() << std::endl;
-        return std::nullopt;
+        throw std::runtime_error(e.what());
     }
 }
 
@@ -425,32 +392,26 @@ std::vector<FileHeader> OpenixIMGFile::getFileHeaderBySubtype(const std::string 
     try {
         // Check if an image is loaded
         if (!imageLoaded_) {
-            std::cerr << "Error: no image file loaded!" << std::endl;
-            return {};
+            throw std::runtime_error("No image file loaded!");
         }
 
         // Search for files by subtype
         std::vector<FileHeader> results;
         for (size_t i = 0; i < fileList_.size(); ++i) {
             if (fileList_[i].subtype == subtype) {
-                if (verbose_) {
-                    std::cout << "File header found for subtype: " << subtype << " (file: " << fileList_[i].filename <<
-                            ")" << std::endl;
-                }
+                OpenixUtils::log(
+                    "File header found for subtype: " + subtype + " (file: " + fileList_[i].filename + ")");
                 // Add a copy of the file header to results
                 auto *fileHeader = reinterpret_cast<const FileHeader *>(imageData_.data() + 1024 + i * 1024);
                 results.push_back(*fileHeader);
             }
         }
 
-        if (verbose_) {
-            std::cout << "Found " << results.size() << " files with subtype: " << subtype << std::endl;
-        }
+        OpenixUtils::log("Found " + std::to_string(results.size()) + " files with subtype: " + subtype);
 
         return results;
     } catch (const std::exception &e) {
-        std::cerr << "Error retrieving file headers by subtype: " << e.what() << std::endl;
-        return {};
+        throw std::runtime_error(e.what());
     }
 }
 
@@ -465,10 +426,9 @@ std::optional<std::vector<uint8_t> > OpenixIMGFile::getFileDataByFilename(const 
         // Search for the file by filename
         for (const auto &fileInfo: fileList_) {
             if (fileInfo.filename == filename) {
-                if (verbose_) {
-                    std::cout << "Extracting data for: " << filename << " (size: " << fileInfo.originalLength <<
-                            " bytes)" << std::endl;
-                }
+                OpenixUtils::log(
+                    "Extracting data for: " + filename + " (size: " + std::to_string(fileInfo.originalLength) +
+                    " bytes)");
                 // Extract file data
                 std::vector<uint8_t> fileData(fileInfo.originalLength);
                 std::memcpy(fileData.data(), imageData_.data() + fileInfo.offset, fileInfo.originalLength);
@@ -476,14 +436,11 @@ std::optional<std::vector<uint8_t> > OpenixIMGFile::getFileDataByFilename(const 
             }
         }
 
-        if (verbose_) {
-            std::cout << "File data not found for: " << filename << std::endl;
-        }
+        OpenixUtils::log("File data not found for: " + filename);
 
         return std::nullopt;
     } catch (const std::exception &e) {
-        std::cerr << "Error retrieving file data by filename: " << e.what() << std::endl;
-        return std::nullopt;
+        throw std::runtime_error(e.what());
     }
 }
 
@@ -500,10 +457,9 @@ std::vector<std::pair<std::string, std::vector<uint8_t> > > OpenixIMGFile::getFi
         std::vector<std::pair<std::string, std::vector<uint8_t> > > results;
         for (const auto &fileInfo: fileList_) {
             if (fileInfo.subtype == subtype) {
-                if (verbose_) {
-                    std::cout << "Extracting data for: " << fileInfo.filename << " (size: " << fileInfo.originalLength
-                            << " bytes)" << std::endl;
-                }
+                OpenixUtils::log(
+                    "Extracting data for: " + fileInfo.filename + " (size: " + std::to_string(fileInfo.originalLength) +
+                    " bytes)");
                 // Extract file data
                 std::vector<uint8_t> fileData(fileInfo.originalLength);
                 std::memcpy(fileData.data(), imageData_.data() + fileInfo.offset, fileInfo.originalLength);
@@ -511,14 +467,11 @@ std::vector<std::pair<std::string, std::vector<uint8_t> > > OpenixIMGFile::getFi
             }
         }
 
-        if (verbose_) {
-            std::cout << "Found " << results.size() << " files with subtype: " << subtype << std::endl;
-        }
+        OpenixUtils::log("Found " + std::to_string(results.size()) + " files with subtype: " + subtype);
 
         return results;
     } catch (const std::exception &e) {
-        std::cerr << "Error retrieving file data by subtype: " << e.what() << std::endl;
-        return {};
+        throw std::runtime_error(e.what());
     }
 }
 

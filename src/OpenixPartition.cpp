@@ -24,7 +24,7 @@ bool OpenixPartition::parseFromFile(const std::string &filePath) {
     if (!file.is_open()) {
         return false;
     }
-    
+
     bool result = parseFromStream(file);
     file.close();
     return result;
@@ -38,7 +38,7 @@ bool OpenixPartition::parseFromData(const uint8_t *data, const size_t size) {
     // Convert memory data to a string
     const std::string content(reinterpret_cast<const char *>(data), size);
     std::istringstream fileStream(content);
-    
+
     return parseFromStream(fileStream);
 }
 

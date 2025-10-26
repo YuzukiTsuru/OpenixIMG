@@ -68,7 +68,7 @@ namespace OpenixIMG {
          * @param size Size of the data in bytes.
          * @return True if parsing was successful, false otherwise.
          */
-        bool parseFromData(const uint8_t* data, size_t size);
+        bool parseFromData(const uint8_t *data, size_t size);
 
         /**
          * @brief Get the MBR size.

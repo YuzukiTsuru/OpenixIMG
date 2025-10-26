@@ -7,6 +7,7 @@
 #include <iomanip>
 
 #include "OpenixPacker.hpp"
+#include "OpenixUtils.hpp"
 #include "OpenixPartition.hpp"
 #include "OpenixIMGFile.hpp"
 
@@ -98,11 +99,11 @@ int main(const int argc, char *argv[]) {
     std::string input;
     std::string output;
     bool verbose = false;
-    bool noEncrypt = false;
     auto outputFormat = OpenixIMG::OutputFormat::IMGREPACKER;
 
     // Parse command line arguments
-    if (!parseArguments(argc, argv, operation, input, output, verbose, noEncrypt, outputFormat)) {
+    if (bool noEncrypt = false; !
+        parseArguments(argc, argv, operation, input, output, verbose, noEncrypt, outputFormat)) {
         showHelp(argv[0]);
         return 1;
     }
@@ -110,27 +111,26 @@ int main(const int argc, char *argv[]) {
     try {
         // Create OpenixIMGFile instance
         OpenixIMG::OpenixIMGFile imgFile;
-        imgFile.setVerbose(verbose);
-        
+
         // Create OpenixPacker instance with OpenixIMGFile
         OpenixIMG::OpenixPacker packer(imgFile);
 
-        if (verbose) {
-            std::cout << "OpenixIMG v" << VERSION << " started" << std::endl;
-            std::cout << "Operation: " << operation << std::endl;
-            std::cout << "Input: " << input << std::endl;
-            std::cout << "Output: " << output << std::endl;
-        }
+        // Set global verbose mode
+        OpenixIMG::OpenixUtils::setVerboseEnabled(verbose);
+
+        std::cout << "OpenixIMG v" << VERSION << " started" << std::endl;
+        std::cout << "Operation: " << operation << std::endl;
+        std::cout << "Input: " << input << std::endl;
+        std::cout << "Output: " << output << std::endl;
 
         bool success = false;
 
         // Execute the specified operation
         if (operation == "unpack") {
-            if (verbose) {
-                std::cout << "Unpacking image file..." << std::endl;
-                std::cout << "Output format: " <<
-                        (outputFormat == OpenixIMG::OutputFormat::UNIMG ? "unimg" : "imgrepacker") << std::endl;
-            }
+            std::cout << "Unpacking image file..." << std::endl;
+            std::cout << "Output format: " <<
+                    (outputFormat == OpenixIMG::OutputFormat::UNIMG ? "unimg" : "imgrepacker") << std::endl;
+
 
             if (!imgFile.loadImage(input)) {
                 std::cerr << "Failed to load image file!" << std::endl;
@@ -185,9 +185,7 @@ int main(const int argc, char *argv[]) {
         }
         // Default return operation success/failure status
         if (success) {
-            if (verbose) {
-                std::cout << "Operation completed successfully!" << std::endl;
-            }
+            std::cout << "Operation completed successfully!" << std::endl;
             return 0;
         }
         std::cerr << "Operation failed!" << std::endl;

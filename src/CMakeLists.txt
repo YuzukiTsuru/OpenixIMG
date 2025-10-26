@@ -6,6 +6,7 @@ add_library(openiximg
         OpenixCFG.cpp
         OpenixPartition.cpp
         OpenixIMGFile.cpp
+        OpenixUtils.cpp
 )
 
 target_include_directories(openiximg

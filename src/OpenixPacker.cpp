@@ -18,6 +18,7 @@
 #include "OpenixPacker.hpp"
 
 #include "OpenixCFG.hpp"
+#include "OpenixUtils.hpp"
 
 using namespace OpenixIMG;
 namespace fs = std::filesystem;
@@ -153,15 +154,12 @@ bool OpenixPacker::unpackImage(const std::string &outputDir, const OutputFormat 
     try {
         // Check if image is loaded
         if (!imgFile_.isImageLoaded()) {
-            std::cerr << "Error: no image file loaded!" << std::endl;
-            return false;
+            throw std::runtime_error("No image file loaded!");
         }
 
-        if (verbose_) {
-            std::cout << "Unpacking image to " << outputDir << std::endl;
-            std::cout << "Output format: " << (outputFormat == OutputFormat::UNIMG ? "UNIMG" : "IMGREPACKER") <<
-                    std::endl;
-        }
+        OpenixUtils::log("Unpacking image to " + outputDir);
+        OpenixUtils::log(
+            "Output format: " + std::string(outputFormat == OutputFormat::UNIMG ? "UNIMG" : "IMGREPACKER"));
 
         // Recreate output directory if it exists
         if (fs::exists(outputDir)) {
@@ -173,8 +171,7 @@ bool OpenixPacker::unpackImage(const std::string &outputDir, const OutputFormat 
 
         // Create output directory
         if (!fs::create_directories(outputDir)) {
-            std::cerr << "Error: unable to create output directory " << outputDir << "!" << std::endl;
-            return false;
+            throw std::runtime_error("Cannot create output directory: " + outputDir + "!");
         }
 
         // Extract all files from the image
@@ -184,16 +181,12 @@ bool OpenixPacker::unpackImage(const std::string &outputDir, const OutputFormat 
         for (const auto &fileInfo: fileList) {
             if (OutputFormat::UNIMG == outputFormat) {
                 // UNIMG format output
-                if (verbose_) {
-                    std::cout << "Extracting: " << fileInfo.maintype << " " << fileInfo.subtype << std::endl;
-                }
+                OpenixUtils::log("Extracting: " + fileInfo.maintype + " " + fileInfo.subtype);
 
                 // Get file data from memory
                 auto fileDataOpt = imgFile_.getFileDataByFilename(fileInfo.filename);
                 if (!fileDataOpt) {
-                    std::cerr << "Error extracting file data: " << fileInfo.filename << std::endl;
-                    allSuccess = false;
-                    continue;
+                    throw std::runtime_error("Error extracting file data: " + fileInfo.filename);
                 }
 
                 const auto &fileData = *fileDataOpt;
@@ -206,18 +199,14 @@ bool OpenixPacker::unpackImage(const std::string &outputDir, const OutputFormat 
                 std::string contPath = outputDir + std::string("/").append(contFilename);
                 std::ofstream contFile(contPath, std::ios::binary);
                 if (!contFile.is_open()) {
-                    std::cerr << "Error: unable to create content file " << contPath << "!" << std::endl;
-                    allSuccess = false;
-                    continue;
+                    throw std::runtime_error("Unable to create content file: " + contPath);
                 }
                 contFile.write(reinterpret_cast<const char *>(fileData.data()),
                                static_cast<std::streamsize>(fileData.size()));
                 contFile.close();
             } else if (OutputFormat::IMGREPACKER == outputFormat) {
                 // IMGREPACKER format output
-                if (verbose_) {
-                    std::cout << "Extracting " << fileInfo.filename << std::endl;
-                }
+                OpenixUtils::log("Extracting " + fileInfo.filename);
 
                 // Get file data from memory
                 auto fileDataOpt = imgFile_.getFileDataByFilename(fileInfo.filename);
@@ -233,9 +222,7 @@ bool OpenixPacker::unpackImage(const std::string &outputDir, const OutputFormat 
                 std::string outFilePath = outputDir + std::string("/").append(fileInfo.filename);
                 std::ofstream outFile(outFilePath, std::ios::binary);
                 if (!outFile.is_open()) {
-                    std::cerr << "Error: unable to create file " << outFilePath << "!" << std::endl;
-                    allSuccess = false;
-                    continue;
+                    throw std::runtime_error("Unable to create file: " + outFilePath);
                 }
 
                 outFile.write(reinterpret_cast<const char *>(fileData.data()),
@@ -245,16 +232,12 @@ bool OpenixPacker::unpackImage(const std::string &outputDir, const OutputFormat 
         }
 
         if (!genImageCfgFromFileList(fileList, outputDir, outputFormat)) {
-            std::cerr << "Error: failed to generate image configuration files!" << std::endl;
-            return false;
+            throw std::runtime_error("Failed to generate image configuration files!");
         }
-        if (allSuccess && verbose_) {
-            std::cout << "Successfully unpacked " << fileList.size() << " files to " << outputDir << std::endl;
-        }
+        OpenixUtils::log("Successfully unpacked " + std::to_string(fileList.size()) + " files to " + outputDir);
 
         return allSuccess;
-    } catch (const std::exception &e) {
-        std::cerr << "Error unpacking image: " << e.what() << std::endl;
-        return false;
+    } catch (const std::exception &) {
+        throw;
     }
 }

@@ -82,12 +82,6 @@ namespace OpenixIMG {
          */
         void setEncryptionEnabled(bool enabled);
 
-        /**
-         * @brief Set verbose mode
-         * 
-         * @param verbose True to enable verbose output, false to disable
-         */
-        void setVerbose(bool verbose);
 
         /**
          * @brief Initialize cryptographic contexts
@@ -122,10 +116,9 @@ namespace OpenixIMG {
          * @brief Reload the currently loaded image file with a new path
          * 
          * Loads a new image file, replacing the currently loaded image if any.
-         * 
-         * @return True if reloading was successful, false otherwise
+         *
          */
-        bool reloadImage();
+        void reloadImage();
 
         /**
          * @brief Reload the currently loaded image file with a new path
@@ -135,7 +128,7 @@ namespace OpenixIMG {
          * @param newImageFilePath Path to the new image file to load
          * @return True if reloading was successful, false otherwise
          */
-        bool reloadImage(const std::string &newImageFilePath);
+        void reloadImage(const std::string &newImageFilePath);
 
         /**
          * @brief Get the Product ID (PID)
@@ -253,7 +246,7 @@ namespace OpenixIMG {
          * @param context RC6 context to use
          * @return Pointer to encrypted data (same as input pointer)
          */
-        static void *rc6EncryptInPlace(void *data, size_t length, const RC6 &context) ;
+        static void *rc6EncryptInPlace(void *data, size_t length, const RC6 &context);
 
         /**
          * @brief RC6 decrypt data in place
@@ -263,7 +256,7 @@ namespace OpenixIMG {
          * @param context RC6 context to use
          * @return Pointer to decrypted data (same as input pointer)
          */
-        static void *rc6DecryptInPlace(void *data, size_t length, const RC6 &context) ;
+        static void *rc6DecryptInPlace(void *data, size_t length, const RC6 &context);
 
         /**
          * @brief Twofish decrypt data in place
@@ -273,7 +266,7 @@ namespace OpenixIMG {
          * @param context Twofish context to use
          * @return Pointer to decrypted data (same as input pointer)
          */
-        static void *twofishDecryptInPlace(void *data, size_t length, const Twofish &context) ;
+        static void *twofishDecryptInPlace(void *data, size_t length, const Twofish &context);
 
 
         // Private helper function to load file list
@@ -281,7 +274,6 @@ namespace OpenixIMG {
 
         // Member variables
         bool encryptionEnabled_; //!< Flag indicating if encryption is enabled
-        bool verbose_; //!< Flag indicating if verbose output is enabled
         bool imageLoaded_; //!< Flag indicating if an image file is loaded
         std::string imageFilePath_; //!< Path to the loaded image file
         ssize_t imageSize_; //!< Size of the loaded image file

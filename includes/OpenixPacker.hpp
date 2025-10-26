@@ -33,8 +33,7 @@ namespace OpenixIMG {
         [[nodiscard]] bool genImageCfgFromFileList(const std::vector<OpenixIMGFile::FileInfo> &fileList,
                                                    const std::string &outputDir,
                                                    const OutputFormat &outputFormat) const;
-
-        OpenixIMGFile &imgFile_;
-        bool verbose_ = false;
+private:
+        OpenixIMGFile &imgFile_; //!< Reference to IMG file handler
     };
 } // namespace OpenixIMG
