@@ -52,7 +52,8 @@ bool parseArguments(const int argc, char *argv[], std::string &operation,
             } else if (formatArg == "imgrepacker") {
                 outputFormat = OpenixIMG::OutputFormat::IMGREPACKER;
             } else {
-                std::cerr << "Warning: Unknown output format: " << formatArg << ", using default (unimg)" << std::endl;
+                // 保留警告信息，但使用cout输出
+                std::cout << "Warning: Unknown output format: " << formatArg << ", using default (unimg)" << std::endl;
             }
         } else if (arg == "--help" || arg == "-h") {
             return false;
@@ -169,16 +170,14 @@ int main(const int argc, char *argv[]) {
                         outFile.close();
                         std::cout << "Partition table information has been written to " << output << std::endl;
                     } else {
-                        std::cerr << "Failed to open output file: " << output << std::endl;
-                        std::cout << partitionInfo; // still output to console
+                        throw std::runtime_error("Failed to open output file: " + output);
                     }
                 } else {
                     // Output to console
                     std::cout << partitionInfo;
                 }
             } else {
-                std::cerr << "Failed to parse sys_partition.fex!" << std::endl;
-                return 1;
+                throw std::runtime_error("Failed to parse sys_partition.fex!");
             }
 
             return 0;
@@ -188,8 +187,7 @@ int main(const int argc, char *argv[]) {
             std::cout << "Operation completed successfully!" << std::endl;
             return 0;
         }
-        std::cerr << "Operation failed!" << std::endl;
-        return 1;
+        throw std::runtime_error("Operation failed!");
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;

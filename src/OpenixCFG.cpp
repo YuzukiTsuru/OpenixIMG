@@ -185,7 +185,7 @@ bool OpenixCFG::loadFromStream(std::istream &stream) {
         // Process list items
         else if (line[0] == '{') {
             if (!currentGroup) {
-                std::cerr << "Found list item but no current group!" << std::endl;
+                OpenixUtils::log("Found list item but no current group!");
                 continue;
             }
             std::shared_ptr<Variable> var = parseListItem(line);
@@ -194,7 +194,7 @@ bool OpenixCFG::loadFromStream(std::istream &stream) {
         // Process key-value pairs
         else if (std::isalpha(line[0])) {
             if (!currentGroup) {
-                std::cerr << "Found variable but no current group!" << std::endl;
+                OpenixUtils::log("Found variable but no current group!");
                 continue;
             }
             std::shared_ptr<Variable> var = parseKeyValue(line);
@@ -203,7 +203,7 @@ bool OpenixCFG::loadFromStream(std::istream &stream) {
         }
         // Unknown line format
         else {
-            std::cerr << "Unknown line format: " << line << std::endl;
+            throw std::runtime_error("Unknown line format: " + line);
         }
     }
 

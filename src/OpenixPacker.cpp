@@ -211,9 +211,7 @@ bool OpenixPacker::unpackImage(const std::string &outputDir, const OutputFormat 
                 // Get file data from memory
                 auto fileDataOpt = imgFile_.getFileDataByFilename(fileInfo.filename);
                 if (!fileDataOpt) {
-                    std::cerr << "Error extracting file data: " << fileInfo.filename << std::endl;
-                    allSuccess = false;
-                    continue;
+                    throw std::runtime_error("Error extracting file data: " + fileInfo.filename);
                 }
 
                 const auto &fileData = *fileDataOpt;
