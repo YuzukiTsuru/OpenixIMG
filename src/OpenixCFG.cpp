@@ -9,6 +9,7 @@
 #include <utility>
 #include <sstream>
 
+#include "OpenixUtils.hpp"
 #include "OpenixCFG.hpp"
 
 // Constant definitions
@@ -185,7 +186,7 @@ bool OpenixCFG::loadFromStream(std::istream &stream) {
         // Process list items
         else if (line[0] == '{') {
             if (!currentGroup) {
-                OpenixUtils::log("Found list item but no current group!");
+                OpenixIMG::OpenixUtils::log("Found list item but no current group!");
                 continue;
             }
             std::shared_ptr<Variable> var = parseListItem(line);
@@ -194,7 +195,7 @@ bool OpenixCFG::loadFromStream(std::istream &stream) {
         // Process key-value pairs
         else if (std::isalpha(line[0])) {
             if (!currentGroup) {
-                OpenixUtils::log("Found variable but no current group!");
+                OpenixIMG::OpenixUtils::log("Found variable but no current group!");
                 continue;
             }
             std::shared_ptr<Variable> var = parseKeyValue(line);
